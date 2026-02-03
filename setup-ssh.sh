@@ -10,10 +10,17 @@ if id "$ADMIN_USER" >/dev/null 2>&1; then
   usermod -aG sudo adminuser
   usermod -aG ssh-users "$ADMIN_USER"
 else
-  echo "User $ADMIN_USER existiert nicht bitte erstellen!, überspringe..."
+  echo "User $ADMIN_USER existiert nicht bitte erstellen und Skript neu ausführen!, überspringe..."
 fi
-
-# 3) SSH-Hardening als Config-Snippet
+# 3) SSH-Ordner erstllen und Rechte setzen
+if id "$ADMIN_USER" >/dev/null 2>&1; then
+mkdir -p /home/$ADMIN_USER/.ssh
+chown adminuser:adminuser /home/$ADMIN_USER/.ssh
+chown adminuser:adminuser /home/$ADMIN_USER/.ssh/authorized_keys
+else
+  echo "User $ADMIN_USER existiert nicht bitte erstellen und Skript neu ausführen!, überspringe..."
+fi
+# 4) SSH-Hardening als Config-Snippet
 cat << 'EOF' >/etc/ssh/sshd_config.d/99-hardening.conf
 PermitRootLogin no
 PasswordAuthentication no
