@@ -7,6 +7,7 @@ groupadd -f ssh-users
 # 2) Optional: Admin-User hinzufügen (Name als Argument)
 ADMIN_USER="${1:-adminuser}"
 if id "$ADMIN_USER" >/dev/null 2>&1; then
+  usermod -aG sudo adminuser
   usermod -aG ssh-users "$ADMIN_USER"
 else
   echo "User $ADMIN_USER existiert nicht bitte erstellen!, überspringe..."
