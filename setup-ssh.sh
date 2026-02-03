@@ -7,19 +7,34 @@ groupadd -f ssh-users
 # 2) Optional: Admin-User hinzufügen (Name als Argument)
 ADMIN_USER="${1:-adminuser}"
 if id "$ADMIN_USER" >/dev/null 2>&1; then
-  usermod -aG sudo adminuser
+  usermod -aG sudo "$ADMIN_USER"
   usermod -aG ssh-users "$ADMIN_USER"
 else
   echo "User $ADMIN_USER existiert nicht bitte erstellen und Skript neu ausführen!, überspringe..."
+  exit 1
 fi
-# 3) SSH-Ordner erstllen und Rechte setzen
-if id "$ADMIN_USER" >/dev/null 2>&1; then
-mkdir -p /home/$ADMIN_USER/.ssh
-chown adminuser:adminuser /home/$ADMIN_USER/.ssh
-chown adminuser:adminuser /home/$ADMIN_USER/.ssh/authorized_keys
+
+SSH_DIR="/home/$ADMIN_USER/.ssh"
+AUTH_KEYS="$SSH_DIR/authorized_keys"
+
+mkdir -p "$SSH_DIR"
+chown "$ADMIN_USER:$ADMIN_USER" "$SSH_DIR"
+chmod 700 "$SSH_DIR"
+
+# 3) Interaktiv nach Public key fragen
+echo "Bitte jetzt den PUBLIC KEY eingeben (eine Zeile) und dann ENTER:"
+read -r PUBKEY
+
+if [ -z "$PUBKEY" ]; then
+  echo "Kein Key eingegeben, lege leere authorized_keys an."
+  touch "$AUTH_KEYS"
 else
-  echo "User $ADMIN_USER existiert nicht bitte erstellen und Skript neu ausführen!, überspringe..."
+  echo "$PUBKEY" > "$AUTH_KEYS"
 fi
+
+chown "$ADMIN_USER:$ADMIN_USER" "$AUTH_KEYS"
+chmod 600 "$AUTH_KEYS"
+
 # 4) SSH-Hardening als Config-Snippet
 cat << 'EOF' >/etc/ssh/sshd_config.d/99-hardening.conf
 PermitRootLogin no
@@ -31,7 +46,8 @@ AllowGroups ssh-users
 AuthorizedKeysFile .ssh/authorized_keys
 EOF
 
-# 4) Config testen und sshd neu starten
+# 5) Config testen und sshd neu starten
 sshd -t
 systemctl restart sshd
 echo "SSH-Hardening fertig. Erlaubte Gruppe: ssh-users"
+echo "Public Key wurde in $AUTH_KEYS geschrieben."
